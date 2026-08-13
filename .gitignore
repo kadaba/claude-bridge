@@ -1,0 +1,39 @@
+# NOTE: claude-bridge writes all user/SSH config to your HOME dir
+# (~/.ssh/config, ~/.config/claude-bridge/, ~/.claude-bridge/), never inside
+# this repo — so a normal setup can't leak them. These rules are defensive:
+# if any such file ever lands in the working tree, git will refuse to track it.
+
+# ── SSH key material & connection config — NEVER commit ───────────────
+.ssh/
+**/ssh_config
+**/known_hosts
+id_ed25519*
+id_rsa*
+id_ecdsa*
+id_dsa*
+*.pem
+*.key
+*.ppk
+authorized_keys
+
+# ── Local / per-machine config written at setup ───────────────────────
+.claude-bridge/
+.config/
+target.env
+config.local
+*.local
+*.local.json
+settings.local.json
+
+# ── Runtime data (may contain real messages / history / paths) ────────
+*.db
+*.db-wal
+*.db-shm
+*.log
+*.sock
+bridge.db
+journal/journal.db
+
+# ── Python ────────────────────────────────────────────────────────────
+__pycache__/
+*.pyc

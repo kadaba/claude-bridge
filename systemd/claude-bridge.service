@@ -1,0 +1,29 @@
+[Unit]
+Description=claude-bridge relay (message bus for two Claude Code CLIs)
+Documentation=file:%h/claude-bridge/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Token is kept OUT of this unit file (systemctl cat would expose it).
+# It lives in an env file readable only by this user (chmod 600).
+EnvironmentFile=__ENVFILE__
+Environment=BRIDGE_HOST=127.0.0.1
+Environment=BRIDGE_PORT=8787
+Environment=BRIDGE_DB=__WORKDIR__/bridge.db
+WorkingDirectory=__WORKDIR__
+ExecStart=__PYTHON__ __WORKDIR__/relay.py
+Restart=always
+RestartSec=3
+# crash-loop backstop: if it fails 5x in 60s, stop trying (something is wrong)
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+# hardening — the relay only needs to bind loopback and write its db
+NoNewPrivileges=true
+ProtectSystem=full
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
