@@ -108,6 +108,51 @@ Just talk to your local session — the skills do the handshake, transfer, and v
 > "Push ./myapp to the VPS."
 > "Sync myapp between local and the VPS, keep the best version."
 
+## Example conversations (what you actually say)
+
+Once both sessions are connected, you just talk to your **local** Claude Code in
+plain English. Here are real scenarios.
+
+### "Are both versions the same? If not, compare and merge the best of each."
+> **You:** "Check if my local copy of the app and the one on the VPS are the same.
+> If they differ, compare them and merge so both end up with the best version —
+> don't lose anything."
+
+**What it does:**
+1. Reads your local files and asks the VPS session for its file checksums.
+2. Diffs the two and classifies every file: *identical* / *local is newer* /
+   *VPS is newer* / *both changed (conflict)*.
+3. Shows you the differences for anything that diverged and proposes which side
+   wins (or a merge), then **asks you to confirm** — it won't guess silently.
+4. On your OK, copies the agreed files each direction over SSH (checksum-verified),
+   so both machines end up identical to the agreed "best" version.
+5. Confirms both sides now match, and **preserves VPS-only files** like `.env`.
+
+### "Push my latest code to the VPS."
+> **You:** "Push my local ./myapp to the VPS."
+
+**What it does:** opens one SSH connection, transfers, verifies every file's
+checksum on the VPS, closes the connection, and reports `VERIFIED ✅` (or retries
+on mismatch). Your `.env` and secrets are never overwritten unless you say so.
+
+### "What's different between the two right now?" (read-only)
+> **You:** "Just tell me what's different between my local app and the VPS — don't
+> change anything."
+
+**What it does:** fingerprints both copies and shows you a list — files only on one
+side, files that changed, and which is newer — without touching a thing.
+
+### "Deploy this update safely to the running app."
+> **You:** "I changed the auth code locally. Update the VPS, but don't break what's
+> running — check with the VPS side first."
+
+**What it does:** compares state, flags if the VPS has uncommitted changes or a
+hotfix, agrees on the target with you, transfers, then restarts/verifies — treating
+the running VPS copy as production.
+
+> Tip: give each session a clear name first (`/rename laptop`, `/rename vps`) so you
+> always know which is which.
+
 ## How it works
 ```
  laptop Claude ──Remote Control (SendMessage)──►  VPS Claude     ← the conversation
