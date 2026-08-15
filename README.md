@@ -80,6 +80,24 @@ Run it standalone any time:
 - **Optional durable relay** (`relay.py` + `bridge`, `systemd/`): a fallback message bus
   for when a peer session is offline. Not needed for the Remote Control path.
 
+## Works with Codex, Grok, and other CLIs
+claude-bridge is really two independent parts, and only the coordination half is
+Claude-specific:
+- **File transfer is tool-agnostic** — `bridge-init.sh` / `bridge-transfer.sh` /
+  `bridge-manifest.sh` are plain SSH + shell. Any agent that can run bash uses them.
+- **Coordination** is Claude's Remote Control by default, but the bundled **relay**
+  (`relay.py` + `bridge`) is a neutral message bus any CLI can use over shell.
+
+So the same repo works for **Claude Code, OpenAI Codex, and Grok CLI**:
+- **Codex** reads [`AGENTS.md`](AGENTS.md) automatically — relay for coordination, the
+  SSH scripts for transfer, and the optional `journal/` MCP server.
+- **Grok / others** — point the agent at `AGENTS.md`; if it can run bash it can drive
+  the relay + SSH scripts.
+- You can even bridge **across** tools (a Claude session ↔ a Codex session), since the
+  relay and SSH protocol are neutral.
+
+See [`AGENTS.md`](AGENTS.md) for the tool-agnostic instructions.
+
 ## Security
 - SSH keys are `ed25519`, generated locally; your VPS password is used only once to
   install the public key and never stored.
