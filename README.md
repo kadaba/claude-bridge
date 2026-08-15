@@ -63,6 +63,51 @@ Run it standalone any time:
    - **"Push ./myapp to the VPS"** → `bridge-push` opens SSH, transfers, verifies, closes.
    - **"Sync myapp with the VPS"** → `bridge-sync` reconciles both copies to the best version.
 
+## Examples
+
+**1. First-time SSH setup (once, from the laptop)**
+```bash
+./bridge-init.sh --host YOUR.VPS.IP --user root --alias vps --app-dir /root/myapp
+# enter your VPS password once → it installs a key and writes an 'ssh vps' alias
+```
+
+**2. Push a folder to the VPS — open → transfer → verify → close (one command)**
+```bash
+skill/bridge-push/scripts/bridge-transfer.sh ./myapp vps /root/myapp
+# → VERIFIED ✅ all files transferred to vps:/root/myapp, checksums match   (exit 0)
+```
+Make the remote an exact mirror (also deletes remote extras):
+```bash
+skill/bridge-push/scripts/bridge-transfer.sh ./myapp vps /root/myapp --delete
+```
+
+**3. Compare two copies without moving anything**
+```bash
+skill/bridge-push/scripts/bridge-manifest.sh ./myapp          # local fingerprint
+ssh vps 'cd /root/myapp && find . -type f ! -path "./.git/*" | sort | xargs sha256sum | sha256sum'
+# matching FILES/BYTES/SHA on both sides = identical trees
+```
+
+**4. Coordinate the two sessions over the relay (works with any CLI — Codex, Grok, …)**
+```bash
+# on the VPS — start the message bus:
+export BRIDGE_TOKEN=$(python3 -c "import secrets;print(secrets.token_urlsafe(24))")
+python3 relay.py &                          # listens on 127.0.0.1:8787
+
+# on the laptop — tunnel + configure:
+ssh -N -L 8787:127.0.0.1:8787 vps &
+./setup.sh local http://127.0.0.1:8787 "$BRIDGE_TOKEN"
+
+# then, from either side:
+bridge send --to vps "starting deploy of myapp"
+bridge wait --timeout 120                   # block until the peer replies
+```
+
+**5. What you actually say to the agent (Claude Code)**
+Just talk to your local session — the skills do the handshake, transfer, and verify:
+> "Push ./myapp to the VPS."
+> "Sync myapp between local and the VPS, keep the best version."
+
 ## How it works
 ```
  laptop Claude ──Remote Control (SendMessage)──►  VPS Claude     ← the conversation
