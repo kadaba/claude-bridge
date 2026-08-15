@@ -139,6 +139,17 @@ class Handler(BaseHTTPRequestHandler):
             peer = qs.get("peer", ["*"])[0]
             since = int(qs.get("since", ["0"])[0])
             return self._json(200, {"messages": fetch(peer, since)})
+        if u.path == "/blob":
+            p = _safe_blob_path(qs.get("name", [""])[0])
+            if not p or not os.path.isfile(p):
+                return self._json(404, {"error": "blob not found"})
+            data = open(p, "rb").read()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/octet-stream")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+            return
         return self._json(404, {"error": "not found"})
 
     def do_POST(self):
@@ -158,7 +169,28 @@ class Handler(BaseHTTPRequestHandler):
             mid = insert(sender, target, d.get("kind", "msg"), body,
                          d.get("channel", "main"), time.time())
             return self._json(200, {"id": mid})
+        if u.path == "/blob":
+            qs = parse_qs(u.query)
+            p = _safe_blob_path(qs.get("name", [""])[0])
+            if not p:
+                return self._json(400, {"error": "bad blob name"})
+            n = int(self.headers.get("Content-Length", "0"))
+            data = self.rfile.read(n) if n else b""
+            with open(p, "wb") as f:
+                f.write(data)
+            return self._json(200, {"ok": True, "name": os.path.basename(p), "bytes": len(data)})
         return self._json(404, {"error": "not found"})
+
+
+BLOB_DIR = os.environ.get("BRIDGE_BLOBS") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "blobs")
+
+
+def _safe_blob_path(name):
+    base = os.path.basename((name or "").strip())
+    if not base or base in (".", "..") or "/" in base or "\\" in base:
+        return None
+    os.makedirs(BLOB_DIR, exist_ok=True)
+    return os.path.join(BLOB_DIR, base)
 
 
 def main():

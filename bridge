@@ -29,6 +29,7 @@ import os
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 CFG_DIR = os.path.expanduser("~/.claude-bridge")
@@ -183,6 +184,45 @@ def cmd_ping(a):
     print(f"relay ok, max_id={r.get('max_id')}")
 
 
+def _blob_url(name):
+    return f"{URL}/blob?name={urllib.parse.quote(name)}"
+
+
+def cmd_put(a):
+    need_cfg()
+    if not os.path.isfile(a.file):
+        die(f"no such file: {a.file}")
+    data = open(a.file, "rb").read()
+    name = a.name or os.path.basename(a.file)
+    req = urllib.request.Request(_blob_url(name), data=data, method="POST")
+    req.add_header("Authorization", f"Bearer {TOKEN}")
+    req.add_header("Content-Type", "application/octet-stream")
+    try:
+        with urllib.request.urlopen(req, timeout=600) as r:
+            print(json.loads(r.read()))
+    except urllib.error.HTTPError as e:
+        die(f"HTTP {e.code}: {e.read().decode(errors='replace')}")
+    except urllib.error.URLError as e:
+        die(f"cannot reach relay: {e.reason}")
+
+
+def cmd_get(a):
+    need_cfg()
+    req = urllib.request.Request(_blob_url(a.name))
+    req.add_header("Authorization", f"Bearer {TOKEN}")
+    try:
+        with urllib.request.urlopen(req, timeout=600) as r:
+            data = r.read()
+    except urllib.error.HTTPError as e:
+        die(f"HTTP {e.code}: {e.read().decode(errors='replace')}")
+    except urllib.error.URLError as e:
+        die(f"cannot reach relay: {e.reason}")
+    out = a.out or a.name
+    with open(out, "wb") as f:
+        f.write(data)
+    print(f"wrote {out} ({len(data)} bytes)")
+
+
 def build_parser():
     p = argparse.ArgumentParser(prog="bridge", description="claude-bridge client")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -214,6 +254,16 @@ def build_parser():
 
     s = sub.add_parser("ping", help="check relay reachability")
     s.set_defaults(fn=cmd_ping)
+
+    s = sub.add_parser("put", help="upload a file to the relay (SSH-free transfer)")
+    s.add_argument("file", help="local file to upload (tar a folder first)")
+    s.add_argument("--name", default=None, help="name to store it as (default: basename)")
+    s.set_defaults(fn=cmd_put)
+
+    s = sub.add_parser("get", help="download a file previously put on the relay")
+    s.add_argument("name", help="stored blob name")
+    s.add_argument("--out", default=None, help="output path (default: the name)")
+    s.set_defaults(fn=cmd_get)
     return p
 
 

@@ -188,6 +188,22 @@ So the same repo works for **Claude Code, OpenAI Codex, and Grok CLI**:
 
 See [`AGENTS.md`](AGENTS.md) for the tool-agnostic instructions.
 
+## No SSH? Restricted networks? Two different users?
+See [`NETWORKING.md`](NETWORKING.md). In short:
+- **Comparing** copies only exchanges tiny hashes — works over almost any channel.
+  **Transferring** bytes always needs a reachable rendezvous.
+- **SSH blocked?** Fall back to a **git remote**, a **cloud bucket**, or the relay's
+  own file transfer over HTTPS:
+  ```bash
+  tar czf myapp.tgz myapp && bridge put myapp.tgz    # sender
+  bridge get myapp.tgz && tar xzf myapp.tgz           # receiver
+  ```
+- **443 fully blocked?** Then the agents can't run either (they need the model API) —
+  the real case is "peers can't reach each other," solved by a relay on a neutral host
+  or a mesh VPN (Tailscale/WireGuard).
+- **Two different people** can collaborate via the token-based relay (Remote Control is
+  same-account only) — with an agreed scope and treating the peer as untrusted input.
+
 ## Security
 - SSH keys are `ed25519`, generated locally; your VPS password is used only once to
   install the public key and never stored.

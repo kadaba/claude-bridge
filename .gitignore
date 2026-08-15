@@ -37,3 +37,6 @@ journal/journal.db
 # ── Python ────────────────────────────────────────────────────────────
 __pycache__/
 *.pyc
+
+# relay file-transfer staging
+blobs/
