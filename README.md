@@ -33,6 +33,9 @@ cd claude-bridge
 On the VPS: `./install.sh --no-ssh`. Then start each session with `claude --rc`, name
 them (`/rename laptop`, `/rename vps`), and just talk to the laptop one.
 
+> **Using Codex or Grok instead of Claude Code?** `./install.sh --agent codex` (or
+> `--agent grok`). See [`AGENTS.md`](AGENTS.md) for per-tool install & usage.
+
 <details>
 <summary><b>Requirements & what <code>install.sh</code> does</b></summary>
 

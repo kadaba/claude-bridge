@@ -70,11 +70,44 @@ Compare, agree, then move only what's needed:
 - **One physical SSH connection per operation**, opened at the start and closed at the
   end (`bridge-transfer.sh` does this via SSH ControlMaster).
 
-## Per-tool notes
-- **Claude Code:** native Remote Control + the `skill/` files auto-trigger. The relay
-  is the offline fallback.
-- **Codex:** reads this `AGENTS.md`. Use the relay for coordination; call the scripts
-  via its shell tool. The optional `journal/` MCP server also works (Codex is MCP-capable).
-- **Grok / other CLIs:** if the tool can run bash and read an instructions file, point
-  it here and use the relay + SSH scripts. No native cross-session messaging is needed —
-  the relay provides it.
+## Install & usage by tool
+
+### Claude Code
+```bash
+./install.sh                 # installs skills + crossSessionInbound + SSH wizard
+```
+Start `claude --rc` on both machines, name them (`/rename laptop`, `/rename vps`), and talk
+to the local session ("push …", "sync …"). Native Remote Control coordinates; relay = fallback.
+
+### OpenAI Codex
+```bash
+./install.sh --agent codex   # puts 'bridge' on PATH + runs the SSH wizard (no Claude skills)
+```
+Codex **auto-reads this `AGENTS.md`** from the working directory — so run Codex inside this
+repo, or copy the file into your project: `cp AGENTS.md /path/to/project/AGENTS.md`. Then ask:
+> "Push ./myapp to the VPS and verify."    "Compare local and the VPS, show me the differences."
+
+Codex runs the SSH scripts via its shell tool. For two Codex sessions to talk, start the relay
+(below) and use `bridge send/recv/wait`. The `journal/` MCP server also works — add it as an
+MCP server and Codex gets `journal_log` / `claim` / `release`.
+
+### Grok CLI (or any bash-capable agent)
+```bash
+./install.sh --agent grok    # puts 'bridge' on PATH + runs the SSH wizard
+```
+Point the agent at `AGENTS.md` (paste it, or place it where your CLI reads project rules). It
+needs only a shell tool + the ability to read this file. Ask it the same things — it runs
+`bridge-transfer.sh` / `bridge-manifest.sh` for files and `bridge send/recv` to coordinate.
+
+### Start the relay (coordination for Codex / Grok / cross-tool / cross-user)
+```bash
+# on the VPS (or any host both peers can reach):
+export BRIDGE_TOKEN=$(python3 -c "import secrets;print(secrets.token_urlsafe(24))")
+python3 relay.py &
+# on the laptop:
+ssh -N -L 8787:127.0.0.1:8787 vps &
+./setup.sh local http://127.0.0.1:8787 "$BRIDGE_TOKEN"    # use 'vps' on the other side
+```
+Then `bridge send --to vps "…"`, `bridge wait`, `bridge put file`, `bridge get file` work from
+any tool. **Same token = connected** — that is also how two *different users* pair (the shared
+token is the consent gate; a wrong token is rejected).
